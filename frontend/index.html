@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Policy Pulse — Intake</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-50">
+  <div class="max-w-2xl mx-auto p-6">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="./static/logo.jpg" alt="Policy Pulse" class="h-14" />
+      <h1 class="text-2xl font-semibold">Policy Pulse — Intake Form</h1>
+    </div>
+
+    <form id="intake" class="bg-white rounded-2xl shadow p-6 space-y-4" action="/api/submit" method="POST" enctype="multipart/form-data">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="text-sm font-medium">First Name</span>
+          <input required name="first_name" class="mt-1 w-full border rounded-lg p-2" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium">Last Name</span>
+          <input required name="last_name" class="mt-1 w-full border rounded-lg p-2" />
+        </label>
+      </div>
+
+      <label class="block">
+        <span class="text-sm font-medium">Address</span>
+        <input name="address" class="mt-1 w-full border rounded-lg p-2" />
+      </label>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <label class="block">
+          <span class="text-sm font-medium">City</span>
+          <input name="city" class="mt-1 w-full border rounded-lg p-2" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium">State</span>
+          <input name="state" maxlength="2" class="mt-1 w-full border rounded-lg p-2" placeholder="e.g., NY" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium">ZIP</span>
+          <input name="zip" class="mt-1 w-full border rounded-lg p-2" />
+        </label>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="text-sm font-medium">Home Phone</span>
+          <input name="home_phone" class="mt-1 w-full border rounded-lg p-2" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium">Cell Phone</span>
+          <input name="cell_phone" class="mt-1 w-full border rounded-lg p-2" />
+        </label>
+      </div>
+
+      <label class="block">
+        <span class="text-sm font-medium">Email</span>
+        <input type="email" name="email" class="mt-1 w-full border rounded-lg p-2" />
+      </label>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="text-sm font-medium">Are you a licensed agent?</span>
+          <select required name="is_agent" class="mt-1 w-full border rounded-lg p-2">
+            <option value="">Select…</option>
+            <option value="true">Y</option>
+            <option value="false">N</option>
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="text-sm font-medium">Years of experience</span>
+          <input type="number" min="0" max="60" name="years_exp" class="mt-1 w-full border rounded-lg p-2" />
+        </label>
+      </div>
+
+      <label class="block">
+        <span class="text-sm font-medium">SSN</span>
+        <input required inputmode="numeric" name="ssn" placeholder="123-45-6789" class="mt-1 w-full border rounded-lg p-2" />
+        <p class="text-xs text-gray-500 mt-1">Stored encrypted. Admins see full SSN in the portal.</p>
+      </label>
+
+      <label class="block">
+        <span class="text-sm font-medium">Upload Resume (PDF, DOC, DOCX, up to 5 MB)</span>
+        <input type="file" name="resume" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="mt-1 w-full border rounded-lg p-2 bg-white" />
+      </label>
+
+      <div class="border rounded-lg p-3 bg-gray-50">
+        <p class="text-sm font-medium mb-1">Background Check Disclosure and Authorization</p>
+        <div class="text-sm text-gray-700 space-y-1 mb-3">
+          <p>By submitting this application, I acknowledge and understand that Policy Pulse conducts background checks on all prospective employees and contractors as part of its hiring and onboarding process.</p>
+          <p>The background check may include, but is not limited to:</p>
+          <ul class="list-disc ml-5">
+            <li>Verification of identity and work eligibility</li>
+            <li>Review of professional licenses and credentials</li>
+            <li>Employment and education verification</li>
+            <li>Criminal background history</li>
+          </ul>
+          <p>I understand that any offer of employment or contracting is contingent upon the successful completion of this background check and that the results may affect my eligibility to be hired or contracted.</p>
+          <p>I hereby authorize Policy Pulse, its representatives, or designated third-party vendors to obtain and review any information necessary to complete this background check, in accordance with applicable federal and state laws.</p>
+          <p>I further acknowledge that refusal to consent to this background check or the presence of disqualifying information may result in the withdrawal of any offer of employment or contracting.</p>
+        </div>
+
+        <label class="inline-flex items-center gap-2">
+          <input type="checkbox" name="background_consent" required class="h-4 w-4" />
+          <span class="text-sm">I acknowledge and authorize this background check.</span>
+        </label>
+      </div>
+
+      <button class="w-full bg-blue-600 text-white rounded-xl p-3 font-medium hover:bg-blue-700">Submit</button>
+      <p id="msg" class="text-center text-sm mt-2"></p>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('intake');
+    const msg = document.getElementById('msg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = '';
+      const fd = new FormData(form);
+
+      // Normalize checkbox to 'true' if checked
+      if (fd.get('background_consent') === 'on') {
+        fd.set('background_consent', 'true');
+      }
+
+      // years_exp: if blank, remove so backend can treat it as Optional
+      if (!fd.get('years_exp')) fd.delete('years_exp');
+
+      try {
+        const r = await fetch(form.action, { method: 'POST', body: fd });
+        if (r.ok) {
+          msg.textContent = 'Submitted successfully. Thank you!';
+          msg.className = 'text-center text-sm mt-2 text-green-600';
+          form.reset();
+        } else {
+          let t = 'Submission failed';
+          try { const j = await r.json(); t = j.detail || JSON.stringify(j); } catch {}
+          msg.textContent = 'Error: ' + t;
+          msg.className = 'text-center text-sm mt-2 text-red-600';
+        }
+      } catch {
+        msg.textContent = 'Network error. Please try again.';
+        msg.className = 'text-center text-sm mt-2 text-red-600';
+      }
+    });
+  </script>
+</body>
+</html>

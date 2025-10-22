@@ -1,0 +1,55 @@
+name: Deploy to Vultr (password)
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH & deploy to Vultr
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VULTR_HOST }}
+          username: ${{ secrets.VULTR_USER }}
+          password: ${{ secrets.VULTR_PASSWORD }}
+          script_stop: true
+          script: |
+            set -e
+
+            apt-get update -y
+            apt-get install -y git ca-certificates curl gnupg
+
+            # Install Docker if missing
+            if ! command -v docker >/dev/null 2>&1; then
+              install -m 0755 -d /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+              apt-get update -y
+              apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            fi
+
+            mkdir -p /opt/policy-pulse
+            cd /opt/policy-pulse
+
+            # Clone or pull latest code
+            if [ ! -d .git ]; then
+              git clone https://oauth2:${{ secrets.GH_PAT }}@github.com/${{ secrets.REPO_SLUG }}.git .
+            else
+              git fetch --all
+              git reset --hard origin/main
+              git clean -fd
+            fi
+
+            # Write environment file
+            cat > .env << 'EOF'
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_EXPIRE_MIN=43200
+            JWT_ALG=HS256
+            FERNET_KEY=${{ secrets.FERNET_KEY }}
+            POSTGRES_USER=${{ vars.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_DB=${{ vars.POSTGRES_DB }}
+            EOF
+
+            docker compose up -d --build

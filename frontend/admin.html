@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Policy Pulse — Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-6xl mx-auto p-6">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="./static/logo.jpg" alt="Policy Pulse" class="h-10" />
+      <h1 class="text-2xl font-semibold">Admin Portal</h1>
+    </div>
+
+    <div id="login" class="bg-white rounded-2xl shadow p-6 max-w-md">
+      <label class="block mb-3">
+        <span class="text-sm">Email</span>
+        <input id="email" type="email" class="mt-1 w-full border rounded-lg p-2" />
+      </label>
+      <label class="block mb-4">
+        <span class="text-sm">Password</span>
+        <input id="password" type="password" class="mt-1 w-full border rounded-lg p-2" />
+      </label>
+      <button id="btnLogin" class="w-full bg-blue-600 text-white rounded-xl p-3 font-medium hover:bg-blue-700">Login</button>
+      <p id="lmsg" class="text-sm mt-2"></p>
+    </div>
+
+    <div id="panel" class="hidden bg-white rounded-2xl shadow p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-medium">Recent Submissions</h2>
+        <button id="logout" class="text-sm underline">Logout</button>
+      </div>
+      <div class="overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left border-b">
+              <th class="py-2 pr-4">ID</th>
+              <th class="py-2 pr-4">Name</th>
+              <th class="py-2 pr-4">Contact</th>
+              <th class="py-2 pr-4">Agent?</th>
+              <th class="py-2 pr-4">Years</th>
+              <th class="py-2 pr-4">SSN (FULL)</th>
+              <th class="py-2 pr-4">Resume</th>
+              <th class="py-2 pr-4">Created</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const login = document.getElementById('login');
+    const panel = document.getElementById('panel');
+    const lmsg  = document.getElementById('lmsg');
+    const rows  = document.getElementById('rows');
+
+    function api(path, opts={}){
+      const tok = localStorage.getItem('token') || '';
+      return fetch('/api' + path, { ...opts, headers: { ...(opts.headers||{}), Authorization: 'Bearer ' + tok }});
+    }
+
+    async function load(){
+      const r = await api('/admin/submissions');
+      if(!r.ok){ lmsg.textContent='Not authorized or token expired.'; return; }
+      const data = await r.json();
+      rows.innerHTML = data.map(s => `
+        <tr class="border-b align-top">
+          <td class="py-2 pr-4">${s.id}</td>
+          <td class="py-2 pr-4">${s.first_name} ${s.last_name}<br><span class="text-xs text-gray-500">${s.city||''}, ${s.state||''}</span></td>
+          <td class="py-2 pr-4">
+            ${s.email || ''}<br>
+            <span class="text-xs text-gray-600">${s.home_phone || ''}${s.cell_phone ? ' / ' + s.cell_phone : ''}</span>
+          </td>
+          <td class="py-2 pr-4">${s.is_agent ? 'Yes' : 'No'}</td>
+          <td class="py-2 pr-4">${s.years_exp ?? ''}</td>
+          <td class="py-2 pr-4 font-mono">${s.ssn}</td>
+          <td class="py-2 pr-4">${s.resume_path ? `<a class="text-blue-600 underline" href="${s.resume_path}" target="_blank">Download</a>` : ''}</td>
+          <td class="py-2 pr-4">${s.created_at || ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+      lmsg.textContent = '';
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const fd = new FormData(); fd.set('email', email); fd.set('password', password);
+      const r = await fetch('/api/admin/login', { method:'POST', body: fd });
+      if(!r.ok){ lmsg.textContent='Invalid login'; return; }
+      const j = await r.json();
+      localStorage.setItem('token', j.access_token);
+      login.classList.add('hidden'); panel.classList.remove('hidden');
+      load();
+    });
+
+    document.getElementById('logout').addEventListener('click', () => {
+      localStorage.removeItem('token'); location.reload();
+    });
+  </script>
+</body>
+</html>
